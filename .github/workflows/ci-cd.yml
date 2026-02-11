@@ -101,12 +101,30 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --configuration Release
+      
+    - name: Run application in background
+      run: |
+        dotnet run --configuration Release --urls "http://localhost:5000" &
+        sleep 10
+        
     - name: Run ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.10.0
       with:
-        target: 'https://api.fjordsnapper.dev'
-        rules_file_name: '.zap/rules.tsv'
+        target: 'http://localhost:5000'
         cmd_options: '-a'
+        
+    - name: Stop application
+      run: pkill -f "dotnet run"
 
   deploy-dev:
     runs-on: ubuntu-latest
