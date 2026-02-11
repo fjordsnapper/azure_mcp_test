@@ -124,7 +124,8 @@ jobs:
         cmd_options: '-a'
         
     - name: Stop application
-      run: pkill -f "dotnet run"
+      run: |
+        pkill -f "dotnet run" || true
 
   deploy-dev:
     runs-on: ubuntu-latest
