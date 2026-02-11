@@ -86,7 +86,8 @@ jobs:
       if: github.event_name == 'push'
       uses: docker/build-push-action@v5
       with:
-        context: ./UserApi
+        context: .
+        file: ./UserApi/Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
