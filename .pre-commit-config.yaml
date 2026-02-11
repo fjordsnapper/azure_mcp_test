@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/dotnet/format
+    rev: v6.0.224052
+    hooks:
+      - id: dotnet-format
+        args: [--folder, --include, '\.(cs|vb)$']
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        args: [--config, .gitleaks.toml]
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.67.0
+    hooks:
+      - id: trufflehog
+        args: [--regex, --entropy=False, --base=main, --head=HEAD]

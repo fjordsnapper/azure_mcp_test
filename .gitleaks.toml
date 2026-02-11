@@ -1,0 +1,36 @@
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''\.git$''',
+    '''\.pre-commit-config\.yaml$''',
+    '''\.gitleaks\.toml$''',
+]
+
+[[rules]]
+description = "GitHub token"
+id = "github-token"
+regex = '''ghp_[a-zA-Z0-9]{36}'''
+keywords = ["ghp_"]
+
+[[rules]]
+description = "GitHub App token"
+id = "github-app-token"
+regex = '''(ghu|ghs|ghr)_[a-zA-Z0-9]{36}'''
+keywords = ["ghu_", "ghs_", "ghr_"]
+
+[[rules]]
+description = "Azure Service Principal"
+id = "azure-sp"
+regex = '''[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}'''
+keywords = ["azure", "subscription", "tenant"]
+
+[[rules]]
+description = "Generic API Key"
+id = "generic-api-key"
+regex = '''(?i)(api[_-]?key|apikey|secret|token)[\s=:]+['\"]?[a-zA-Z0-9_\-]{16,}['\"]?'''
+keywords = ["api", "key", "secret", "token"]

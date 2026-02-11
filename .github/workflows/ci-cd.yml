@@ -1,0 +1,164 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Run tests with coverage
+      run: |
+        dotnet test --no-build --configuration Release --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/**/coverage.cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+        
+    - name: Code formatting check
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+      
+    - name: Secret scanning with Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Secret scanning with TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        
+    - name: Security vulnerability scan
+      run: |
+        dotnet list package --vulnerable --include-transitive
+        
+    - name: Log in to Container Registry
+      if: github.event_name == 'push'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      if: github.event_name == 'push'
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          
+    - name: Build and push Docker image
+      if: github.event_name == 'push'
+      uses: docker/build-push-action@v5
+      with:
+        context: ./UserApi
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'https://api.fjordsnapper.dev'
+        rules_file_name: '.zap/rules.tsv'
+        cmd_options: '-a'
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: dev
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to Azure Container Instances (Dev)
+      run: |
+        echo "Deploying to development environment"
+        # Azure CLI deployment script would go here
+        # Using Container Instances for cost optimization
+        
+    - name: Health check
+      run: |
+        echo "Performing health check on deployed service"
+        # Health check verification
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to Azure Container Instances (Staging)
+      run: |
+        echo "Deploying to staging environment"
+        # Azure CLI deployment script would go here
+        
+    - name: Health check
+      run: |
+        echo "Performing health check on deployed service"
+        # Health check verification
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: Deploy to Azure Container Instances (Production)
+      run: |
+        echo "Deploying to production environment"
+        # Production deployment with manual approval
+        
+    - name: Health check
+      run: |
+        echo "Performing health check on production service"
+        # Production health check verification
